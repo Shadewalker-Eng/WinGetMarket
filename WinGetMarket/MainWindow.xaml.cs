@@ -129,10 +129,14 @@ public sealed partial class MainWindow : Window
         try
         {
             Tell($"{action} in progress: {p.Name}. Watch for installer prompts.");
-            var args = new List<string> { action == "Uninstall" ? "uninstall" : action == "Update" ? "upgrade" : "install", "--id", p.Id, "--exact", "--source", "winget", "--disable-interactivity" };
-            var result = await WingetService.RunAsync(args, line => DispatcherQueue.TryEnqueue(() => Tell(line)));
+            string[] args = [action == "Uninstall" ? "uninstall" : action == "Update" ? "upgrade" : "install", "--id", p.Id, "--exact", "--source", "winget", "--disable-interactivity"];
+            void Progress(string line) => DispatcherQueue.TryEnqueue(() => Tell(line));
+            var result = action == "Uninstall"
+                ? await WingetService.RunAsync(args, Progress)
+                : await WingetService.RunInstallOrUpgradeAsync(args, Progress);
             Tell(result.ExitCode == 0 ? $"{action} completed: {p.Name}. Refresh to reload package status." : $"{action} failed (0x{result.ExitCode:X8}). {result.Output}", result.ExitCode == 0 ? InfoBarSeverity.Success : InfoBarSeverity.Error);
         }
+        catch (OperationCanceledException ex) { Tell(ex.Message); }
         catch (Exception ex) { Tell(ex.Message, InfoBarSeverity.Error); }
         finally { working = false; Busy.Visibility = Visibility.Collapsed; gate.Release(); }
     }
@@ -158,13 +162,14 @@ public sealed partial class MainWindow : Window
             working = true;
             Busy.Visibility = Visibility.Visible;
             Tell("Updating all eligible apps. Watch for installer prompts.");
-            var result = await WingetService.RunAsync(WingetService.UpdateAllArguments(),
+            var result = await WingetService.RunInstallOrUpgradeAsync(WingetService.UpdateAllArguments(),
                 line => DispatcherQueue.TryEnqueue(() => Tell(line)));
             severity = result.ExitCode == 0 ? InfoBarSeverity.Success : InfoBarSeverity.Warning;
             message = result.ExitCode == 0
                 ? "Update All completed. The updates list has been refreshed."
                 : $"Update All returned 0x{result.ExitCode:X8}. Some apps may not have updated. {result.Output}";
         }
+        catch (OperationCanceledException ex) { Tell(ex.Message); return; }
         catch (Exception ex) { message = $"Update All failed: {ex.Message}"; severity = InfoBarSeverity.Error; }
         finally
         {

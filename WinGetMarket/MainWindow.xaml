@@ -20,12 +20,14 @@
      <Grid><TextBlock x:Name="Heading" Text="Made for your everyday" FontSize="26" FontWeight="SemiBold"/><TextBlock x:Name="Count" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#9296A7"/></Grid>
      <TextBlock x:Name="Subtitle" Text="A curated starting point. Search to explore the live WinGet catalog." Foreground="#A4A8B9" TextWrapping="Wrap"/>
      <Button x:Name="UpdateAll" Content="Update All" Style="{StaticResource AccentButtonStyle}" Click="UpdateAllClicked" Visibility="Collapsed" IsEnabled="False"/>
-     <ProgressBar x:Name="Busy" IsIndeterminate="True" Visibility="Collapsed"/>
      <ItemsControl x:Name="Cards"><ItemsControl.ItemsPanel><ItemsPanelTemplate><ItemsWrapGrid Orientation="Horizontal" MaximumRowsOrColumns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel></ItemsControl>
      <Button x:Name="MoreApps" Content="Show more apps" Click="MoreAppsClicked" Visibility="Collapsed"/>
      <TextBlock x:Name="Empty" Visibility="Collapsed" Text="No packages found. Try another search or refresh your library." Foreground="#A4A8B9"/>
     </StackPanel></ScrollViewer>
-    <InfoBar x:Name="Status" Grid.Row="2" IsOpen="True" IsClosable="False" Severity="Informational" Title="Powered by Windows Package Manager" Message="Package actions ask for confirmation. Installer prompts may appear."/>
+    <StackPanel Grid.Row="2" Spacing="4" AutomationProperties.Name="Operation status">
+     <ProgressBar x:Name="Busy" IsIndeterminate="True" Visibility="Collapsed"/>
+     <InfoBar x:Name="Status" IsOpen="True" IsClosable="False" Severity="Informational" Title="Powered by Windows Package Manager" Message="Package actions ask for confirmation. Installer prompts may appear."/>
+    </StackPanel>
    </Grid>
   </NavigationView>
  </Grid>
