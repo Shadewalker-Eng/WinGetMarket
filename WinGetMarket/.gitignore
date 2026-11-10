@@ -1,0 +1,8 @@
+bin/
+obj/
+.cli/
+.packages/
+.nuget-cache/
+dist/
+*.log
+single-exe/

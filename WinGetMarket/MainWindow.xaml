@@ -1,0 +1,36 @@
+<Window x:Class="WinGetMarket.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <Grid RequestedTheme="Dark" Background="#101116">
+  <NavigationView x:Name="Nav" PaneDisplayMode="Left" IsBackButtonVisible="Collapsed" IsSettingsVisible="False" OpenPaneLength="220" SelectionChanged="Navigate">
+   <NavigationView.PaneHeader><Border Margin="8,16,8,20" Width="176" Padding="8,0" HorizontalAlignment="Left"><Image Source="ms-appx:///Assets/WinGetMarketLogo.png" MaxWidth="160" Height="54" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="WinGet Market" /></Border></NavigationView.PaneHeader>
+   <NavigationView.MenuItems>
+    <NavigationViewItem Content="Discover" Tag="Discover" Icon="Home" IsSelected="True"/>
+    <NavigationViewItem Content="All apps" Tag="All apps" Icon="AllApps"/>
+    <NavigationViewItem Content="Developer tools" Tag="Development" Icon="Repair"/>
+    <NavigationViewItem Content="Productivity" Tag="Productivity" Icon="Document"/>
+    <NavigationViewItem Content="Creative &amp; media" Tag="Creative" Icon="Video"/>
+    <NavigationViewItemSeparator/>
+    <NavigationViewItem Content="My library" Tag="Library" Icon="Library"/>
+    <NavigationViewItem Content="Updates" Tag="Updates" Icon="Download"/>
+   </NavigationView.MenuItems>
+   <Grid Padding="32,24,32,20" RowSpacing="20">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><AutoSuggestBox x:Name="Search" PlaceholderText="Search apps, tools, and possibilities" QueryIcon="Find" QuerySubmitted="SearchSubmitted" MaxWidth="700" HorizontalAlignment="Stretch"/><Button Grid.Column="1" Content="Refresh" Click="RefreshClicked"/></Grid>
+    <ScrollViewer Grid.Row="1"><StackPanel Spacing="22">
+     <Border x:Name="Hero" CornerRadius="16" Padding="32" Background="#293867"><StackPanel Spacing="12"><TextBlock Text="A BETTER WINDOWS STARTS HERE" Foreground="#B8CEFF" FontSize="12" CharacterSpacing="120"/><TextBlock Text="Great apps.&#x0a;One place to find them." FontSize="38" FontWeight="SemiBold"/><TextBlock Text="Discover everyday essentials and powerful tools, powered by WinGet." TextWrapping="Wrap" Foreground="#D8E0F5"/><Button Content="Explore developer tools  →" Click="ExploreClicked" Margin="0,10,0,0"/></StackPanel></Border>
+     <Grid><TextBlock x:Name="Heading" Text="Made for your everyday" FontSize="26" FontWeight="SemiBold"/><TextBlock x:Name="Count" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#9296A7"/></Grid>
+     <TextBlock x:Name="Subtitle" Text="A curated starting point. Search to explore the live WinGet catalog." Foreground="#A4A8B9" TextWrapping="Wrap"/>
+     <Button x:Name="UpdateAll" Content="Update All" Style="{StaticResource AccentButtonStyle}" Click="UpdateAllClicked" Visibility="Collapsed" IsEnabled="False"/>
+     <ProgressBar x:Name="Busy" IsIndeterminate="True" Visibility="Collapsed"/>
+     <ItemsControl x:Name="Cards"><ItemsControl.ItemsPanel><ItemsPanelTemplate><ItemsWrapGrid Orientation="Horizontal" MaximumRowsOrColumns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel></ItemsControl>
+     <Button x:Name="MoreApps" Content="Show more apps" Click="MoreAppsClicked" Visibility="Collapsed"/>
+     <TextBlock x:Name="Empty" Visibility="Collapsed" Text="No packages found. Try another search or refresh your library." Foreground="#A4A8B9"/>
+    </StackPanel></ScrollViewer>
+    <InfoBar x:Name="Status" Grid.Row="2" IsOpen="True" IsClosable="False" Severity="Informational" Title="Powered by Windows Package Manager" Message="Package actions ask for confirmation. Installer prompts may appear."/>
+   </Grid>
+  </NavigationView>
+ </Grid>
+</Window>
+
+
+
+

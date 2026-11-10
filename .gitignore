@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/.cli/
+**/.packages/
+**/.nuget-cache/
+**/dist/
+**/single-exe/
+.vs/
+*.user
+*.log
