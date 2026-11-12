@@ -6,7 +6,7 @@ A native WinUI 3 app store interface for Windows Package Manager.
 
 ## Features
 
-- First-launch WinGet verification and installation or repair
+- First-launch WinGet verification and optional WinGet PowerShell module setup
 - Curated collections and the full WinGet community catalog
 - Search, app details, and install buttons on app cards
 - Installed app library, individual updates, and Update All
@@ -22,7 +22,7 @@ Requires Windows 10 version 2004 or newer (x64), the .NET 10 SDK, and NuGet netw
 ./WinGetMarket/single-exe/WinGetMarket.exe
 ```
 
-Distribute the resulting EXE alone. Bundled .NET and Windows App SDK files extract to a per-user cache at launch. WinGet Market offers to install or repair WinGet when needed.
+Distribute the resulting EXE alone. Bundled .NET and Windows App SDK files extract to a per-user cache at launch. Startup setup can register App Installer or open its Microsoft Store page. The PowerShell module is available as a separate option.
 
 For a folder-based release, use `./WinGetMarket/build.ps1 -Publish` and distribute the entire `WinGetMarket/dist` folder.
 

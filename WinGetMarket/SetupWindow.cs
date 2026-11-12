@@ -5,7 +5,8 @@ using Windows.UI;
 namespace WinGetMarket;
 public sealed class SetupWindow : Window
 {
-    private readonly Button install = new() { Content = "Install or repair WinGet" };
+    private readonly Button register = new() { Content = "Register App Installer" };
+    private readonly Button module = new() { Content = "Install WinGet PowerShell module (optional)" };
     private readonly Button verify = new() { Content = "Check again" };
     private readonly Button next = new() { Content = "Open WinGet Market", IsEnabled = false };
     private readonly Button store = new() { Content = "Open App Installer in Microsoft Store" };
@@ -28,15 +29,18 @@ public sealed class SetupWindow : Window
         body.Children.Add(status);
         body.Children.Add(busy);
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
-        install.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
-        actions.Children.Add(install); actions.Children.Add(verify); body.Children.Add(actions);
-        body.Children.Add(new TextBlock { Text = "Install or repair downloads Microsoft's WinGet client module from PowerShell Gallery and installs App Installer and its dependencies for your Windows account. Internet access is required. Windows or organization policies may block installation.", FontSize = 12, TextWrapping = TextWrapping.Wrap });
+        next.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
+        actions.Children.Add(register); actions.Children.Add(verify); body.Children.Add(actions);
+        body.Children.Add(new TextBlock { Text = "If WinGet is unavailable, try registering App Installer. You can also install or update App Installer in Microsoft Store.", FontSize = 12, TextWrapping = TextWrapping.Wrap });
         body.Children.Add(store);
+        body.Children.Add(new TextBlock { Text = "The optional module adds WinGet commands to PowerShell. You can open WinGet Market as soon as App Installer is ready.", TextWrapping = TextWrapping.Wrap });
+        body.Children.Add(module);
         body.Children.Add(log);
         body.Children.Add(next);
         var root = new Grid { RequestedTheme = ElementTheme.Dark, Background = new SolidColorBrush(Color.FromArgb(255, 16, 17, 22)) };
         root.Children.Add(new ScrollViewer { Content = body }); Content = root;
-        install.Click += async (_, _) => await Install();
+        register.Click += async (_, _) => await RegisterAppInstaller();
+        module.Click += async (_, _) => await InstallPowerShellModule();
         verify.Click += async (_, _) => await Check();
         store.Click += async (_, _) =>
         {
@@ -57,7 +61,8 @@ public sealed class SetupWindow : Window
     {
         running = value;
         busy.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
-        install.IsEnabled = verify.IsEnabled = store.IsEnabled = !value;
+        register.IsEnabled = !value && !verified;
+        module.IsEnabled = verify.IsEnabled = store.IsEnabled = !value;
         next.IsEnabled = !value && verified;
     }
     private async Task Check()
@@ -67,24 +72,62 @@ public sealed class SetupWindow : Window
         try { var result = await SetupService.VerifyAsync(); verified = result.Success; status.Text = result.Message; }
         finally { SetBusy(false); }
     }
-    private async Task Install()
+    private void BeginLog()
+    {
+        log.Text = "";
+        log.Visibility = Visibility.Visible;
+    }
+
+    private void ShowProgress(string line) => DispatcherQueue.TryEnqueue(() =>
+    {
+        log.Text += line + Environment.NewLine;
+        if (log.Text.Length > 14000) log.Text = log.Text[^14000..];
+    });
+
+    private async Task RegisterAppInstaller()
     {
         if (running) return;
         SetBusy(true);
         try
         {
-            var confirm = new ContentDialog { XamlRoot = Content.XamlRoot, Title = "Install or repair WinGet?", Content = "This will download Microsoft's WinGet client module from PowerShell Gallery and install or repair App Installer and its dependencies for your Windows account.", PrimaryButtonText = "Install", CloseButtonText = "Cancel", DefaultButton = ContentDialogButton.Close };
-            if (await confirm.ShowAsync() != ContentDialogResult.Primary) return;
-            verified = false;
-            log.Text = ""; log.Visibility = Visibility.Visible;
-            status.Text = "Installing WinGet. This may take a few minutes…";
-            var result = await SetupService.InstallAsync(line => DispatcherQueue.TryEnqueue(() => { log.Text = (log.Text + line + Environment.NewLine); if (log.Text.Length > 14000) log.Text = log.Text[^14000..]; }));
+            BeginLog();
+            status.Text = "Registering App Installer…";
+            var result = await SetupService.RegisterAppInstallerAsync(ShowProgress);
             var check = await SetupService.VerifyAsync();
             verified = check.Success;
-            status.Text = check.Success ? check.Message : $"Installation did not produce a working WinGet (0x{result.ExitCode:X8}). Check the details below, retry, or use Microsoft Store. {check.Message}";
-            if (!check.Success && string.IsNullOrWhiteSpace(log.Text)) log.Text = result.Output;
+            status.Text = verified ? check.Message : $"WinGet is still unavailable. Open App Installer in Microsoft Store, then select Check again. {check.Message}";
+            if (!verified && string.IsNullOrWhiteSpace(log.Text)) log.Text = result.Output;
         }
-        catch (Exception ex) { status.Text = $"Installation failed: {ex.Message} You can retry or install App Installer using Microsoft Store."; }
+        catch (Exception ex) { status.Text = $"Registration failed: {ex.Message} Open App Installer in Microsoft Store."; }
+        finally { SetBusy(false); }
+    }
+
+    private async Task InstallPowerShellModule()
+    {
+        if (running) return;
+        SetBusy(true);
+        try
+        {
+            var confirm = new ContentDialog
+            {
+                XamlRoot = Content.XamlRoot,
+                Title = "Install WinGet PowerShell module?",
+                Content = "Setup will get Microsoft.WinGet.Client from PowerShell Gallery if it is missing from your Windows account.",
+                PrimaryButtonText = "Install",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close
+            };
+            if (await confirm.ShowAsync() != ContentDialogResult.Primary) return;
+
+            BeginLog();
+            status.Text = "Setting up the WinGet PowerShell module…";
+            var result = await SetupService.InstallPowerShellModuleAsync(ShowProgress);
+            status.Text = result.ExitCode == 0
+                ? "The WinGet PowerShell module is ready."
+                : $"The optional module setup failed (0x{result.ExitCode:X8}). See the details below.";
+            if (result.ExitCode != 0 && string.IsNullOrWhiteSpace(log.Text)) log.Text = result.Output;
+        }
+        catch (Exception ex) { status.Text = $"The optional module setup failed: {ex.Message}"; }
         finally { SetBusy(false); }
     }
 }

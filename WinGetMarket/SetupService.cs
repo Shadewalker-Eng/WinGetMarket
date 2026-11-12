@@ -3,7 +3,7 @@ namespace WinGetMarket;
 public record WingetCheck(bool Success, string Message);
 public static class SetupService
 {
-    private static string StatePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinGetMarket", "setup-v1.complete");
+    private static string StatePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinGetMarket", "setup-v2.complete");
     public static bool IsComplete => File.Exists(StatePath);
     public static void Complete()
     {
@@ -23,26 +23,38 @@ public static class SetupService
         }
         catch (Exception ex) { return new(false, $"WinGet is unavailable: {ex.Message}"); }
     }
-    public static Task<CommandResult> InstallAsync(Action<string> progress)
-    {
-        // Microsoft's documented bootstrap route, scoped to the current Windows user.
-        const string script = """
+    public static Task<CommandResult> RegisterAppInstallerAsync(Action<string> progress) =>
+        RunPowerShellAsync(
+            """
+            $ErrorActionPreference = 'Stop'
+            Write-Output 'Registering App Installer for your Windows account...'
+            Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
+            """, progress, TimeSpan.FromMinutes(2));
+
+    public static Task<CommandResult> InstallPowerShellModuleAsync(Action<string> progress) =>
+        RunPowerShellAsync(
+            """
             $ErrorActionPreference = 'Stop'
             $ProgressPreference = 'SilentlyContinue'
-            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-            Write-Output 'Checking App Installer registration...'
-            try { Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe -ErrorAction Stop } catch { Write-Output 'Continuing with WinGet installation or repair...' }
-            Write-Output 'Preparing the PowerShell Gallery package provider...'
-            if (!(Get-PackageProvider -Name NuGet -ListAvailable -ErrorAction SilentlyContinue)) { Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Scope CurrentUser -Force | Out-Null }
-            Write-Output 'Downloading Microsoft.WinGet.Client from PowerShell Gallery...'
-            Install-Module -Name Microsoft.WinGet.Client -Repository PSGallery -Scope CurrentUser -Force -AllowClobber -Confirm:$false
-            Import-Module Microsoft.WinGet.Client -ErrorAction Stop
-            Write-Output 'Installing or repairing Windows Package Manager...'
-            Repair-WinGetPackageManager -Force -Latest -ErrorAction Stop
-            Write-Output 'Installation finished. Verifying WinGet next...'
-            """;
-        var powershell = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
+            if (!(Get-Module -ListAvailable -Name Microsoft.WinGet.Client)) {
+                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                Write-Output 'Preparing the PowerShell Gallery package provider...'
+                if (!(Get-PackageProvider -Name NuGet -ListAvailable -ErrorAction SilentlyContinue)) {
+                    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Scope CurrentUser -Force | Out-Null
+                }
+                Write-Output 'Downloading Microsoft.WinGet.Client from PowerShell Gallery...'
+                Install-Module -Name Microsoft.WinGet.Client -Repository PSGallery -Scope CurrentUser -Force -AllowClobber -Confirm:$false
+            }
+            Import-Module Microsoft.WinGet.Client
+            Write-Output 'The WinGet PowerShell module is ready.'
+            """, progress, TimeSpan.FromMinutes(15));
+
+    private static Task<CommandResult> RunPowerShellAsync(string script, Action<string> progress, TimeSpan timeout)
+    {
+        var powershell = Path.Combine(Environment.SystemDirectory, "WindowsPowerShell", "v1.0", "powershell.exe");
+        var encoded = Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(
+            "[Console]::OutputEncoding = [Text.Encoding]::UTF8\n" + script));
         return WingetService.RunProcessAsync(powershell,
-            ["-NoLogo", "-NoProfile", "-NonInteractive", "-EncodedCommand", Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(script))], progress, TimeSpan.FromMinutes(15));
+            ["-NoLogo", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded], progress, timeout);
     }
 }
